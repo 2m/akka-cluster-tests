@@ -3,6 +3,7 @@ package com.evolutiongaming.multinode.sharding
 import akka.actor.Address
 import akka.cluster.Cluster
 import akka.cluster.sharding.ShardRegion
+import akka.testkit.TestProbe
 import com.evolutiongaming.cluster.ShardedMsg
 import com.evolutiongaming.multinode.sharding.actor.ShardedActor
 import com.evolutiongaming.multinode.sharding.common.{ShardingIdentityMultiNodeConfig, ShardingMultiNodeConfig, ShardingMultiNodeSpec, ShardingUniformMultiNodeConfig}
@@ -97,6 +98,7 @@ abstract class DifferentShardingMultiNodeSpec(override val multiJvmConfig: Shard
             shutdown(system, verifySystemShutdown = true)
 
             val newSystem = startNewSystem()
+            val newProbe = TestProbe()(newSystem)
             Cluster(newSystem) joinSeedNodes seedNodes
 
             awaitMembersUp(ourRoles.size, sys = newSystem)
@@ -106,8 +108,8 @@ abstract class DifferentShardingMultiNodeSpec(override val multiJvmConfig: Shard
             val newRegion = startSharding(newSystem)
 
             for (i <- 1 to NumberOfActors) {
-              newRegion ! ShardedMsg(i.toString, ShardedActor.Get)
-              expectMsgPF() {
+              newRegion.tell(ShardedMsg(i.toString, ShardedActor.Get), newProbe.ref)
+              newProbe.expectMsgPF() {
                 case msg =>
               }
             }
